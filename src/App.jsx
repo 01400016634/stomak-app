@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 
-// --- FIXED: ALL IMPORTS MUST BE AT THE TOP ---
 import bgVideo from './assets/Burger_and_Cola_Assembly_Video.mp4';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'firebase/auth';
@@ -26,24 +25,27 @@ const firebaseConfig = {
   measurementId: "G-NLFKN946V6"
 };
 
-// Initialize Firebase safely
 let auth, googleProvider;
 try {
   const app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   googleProvider = new GoogleAuthProvider();
 } catch (error) {
-  console.warn("Firebase not configured. Add your config at the top of App.jsx.");
+  console.warn("Firebase not configured.");
 }
-
 
 // --- DATA: INITIAL MENU ---
 const initialMenuData = [
   { id: 'b1', name: "The Crown Burger", price: 18.99, category: "Burgers", details: "Wagyu beef, truffle aioli.", image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?q=80&w=800" },
   { id: 'b2', name: "Spicy Volcano Burger", price: 16.99, category: "Burgers", details: "Double patty, habanero cheese.", image: "https://images.unsplash.com/photo-1594212887874-9276d4001d94?q=80&w=800" },
+  { id: 'b3', name: "BBQ Bacon Beast", price: 15.99, category: "Burgers", details: "Applewood bacon, crispy onions.", image: "https://images.unsplash.com/photo-1553979459-d2229ba7433b?q=80&w=800" },
+  { id: 'b4', name: "Classic Cheeseburger", price: 12.99, category: "Burgers", details: "Angus beef, cheddar, pickles.", image: "https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?q=80&w=800" },
   { id: 'p1', name: "Truffle Mushroom Pizza", price: 24.99, category: "Pizza", details: "Wild mushrooms, white truffle oil.", image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=800" },
+  { id: 'p2', name: "Pepperoni Passion", price: 19.99, category: "Pizza", details: "Double pepperoni, mozzarella.", image: "https://images.unsplash.com/photo-1534308983496-4fabb1a015ee?q=80&w=800" },
   { id: 's1', name: "Loaded Cheese Fries", price: 8.99, category: "Snacks", details: "Melted cheddar, bacon bits, jalapenos.", image: "https://images.unsplash.com/photo-1576107232684-1279f390859f?q=80&w=800" },
+  { id: 's2', name: "Chicken Wings (12)", price: 15.99, category: "Snacks", details: "Choose Buffalo, BBQ, or Lemon Pepper.", image: "https://images.unsplash.com/photo-1608039829572-78524f79c4c7?q=80&w=800" },
   { id: 'v1', name: "Classic Cola", price: 3.50, category: "Drinks", details: "Refreshing classic soft drink.", image: "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?q=80&w=800" },
+  { id: 'v2', name: "Mango Smoothie", price: 5.99, category: "Drinks", details: "Fresh mango, yogurt, honey blend.", image: "https://images.unsplash.com/photo-1525059337994-6f2a1311b4d4?q=80&w=800" },
   { id: 'c1', name: "Family Royalty Feast", price: 89.99, category: "Combos", details: "1 Burger, 1 Pizza, Fries, Wings, Colas.", image: "https://images.unsplash.com/photo-1563216336-1e663a8a37f5?q=80&w=800" },
 ];
 
@@ -54,7 +56,7 @@ const defaultSettings = {
   logoImage: null,
   logoText: "STOMAK",
   logoSubText: "Solution",
-  homeTitle: "TASTE THE FUTURE.",
+  homeTitle: "TASTE THE FOOD OF FUTURE.", // UPDATED TITLE
   appName: "Stomak OS"
 };
 
@@ -62,8 +64,6 @@ export default function App() {
   const [currentView, setCurrentView] = useState('home');
   const [notification, setNotification] = useState(null);
   const [showScrollFAB, setShowScrollFAB] = useState(false);
-
-  // --- FIREBASE AUTH STATE ---
   const [currentUser, setCurrentUser] = useState(null);
 
   const [notifiedOrders, setNotifiedOrders] = useState(() => {
@@ -71,13 +71,13 @@ export default function App() {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Listen for Google Login State
   useEffect(() => {
     if (!auth) return;
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
       if (user) {
         setCustomerCheckoutInfo(prev => ({ ...prev, name: user.displayName || '', email: user.email || '' }));
+        setBookingInfo(prev => ({ ...prev, name: user.displayName || '', email: user.email || '' }));
       }
     });
     return () => unsubscribe();
@@ -99,6 +99,12 @@ export default function App() {
     return saved ? JSON.parse(saved).map(order => ({ ...order, timestamp: new Date(order.timestamp) })) : [];
   });
 
+  // NEW: Reservations State
+  const [reservations, setReservations] = useState(() => {
+    const saved = localStorage.getItem('stomak_reservations');
+    return saved ? JSON.parse(saved).map(res => ({ ...res, timestamp: new Date(res.timestamp) })) : [];
+  });
+
   const [customerRecords, setCustomerRecords] = useState(() => {
     const saved = localStorage.getItem('stomak_customers');
     return saved ? JSON.parse(saved) : [];
@@ -109,12 +115,10 @@ export default function App() {
     return savedVideo || bgVideo;
   });
 
-  // Cross-Tab Sync
   useEffect(() => {
     const syncStorage = (e) => {
-      if (e.key === 'stomak_orders') {
-        setAllOrders(JSON.parse(e.newValue).map(order => ({ ...order, timestamp: new Date(order.timestamp) })));
-      }
+      if (e.key === 'stomak_orders') setAllOrders(JSON.parse(e.newValue).map(order => ({ ...order, timestamp: new Date(order.timestamp) })));
+      if (e.key === 'stomak_reservations') setReservations(JSON.parse(e.newValue).map(res => ({ ...res, timestamp: new Date(res.timestamp) })));
     };
     window.addEventListener('storage', syncStorage);
     return () => window.removeEventListener('storage', syncStorage);
@@ -123,6 +127,7 @@ export default function App() {
   useEffect(() => { localStorage.setItem('stomak_settings', JSON.stringify(appSettings)); }, [appSettings]);
   useEffect(() => { localStorage.setItem('stomak_menu', JSON.stringify(menuItems)); }, [menuItems]);
   useEffect(() => { localStorage.setItem('stomak_orders', JSON.stringify(allOrders)); }, [allOrders]);
+  useEffect(() => { localStorage.setItem('stomak_reservations', JSON.stringify(reservations)); }, [reservations]);
   useEffect(() => { localStorage.setItem('stomak_customers', JSON.stringify(customerRecords)); }, [customerRecords]);
   useEffect(() => { localStorage.setItem('stomak_notified', JSON.stringify(notifiedOrders)); }, [notifiedOrders]);
 
@@ -137,6 +142,7 @@ export default function App() {
 
   // Booking State
   const [bookingData, setBookingData] = useState({ type: 'Table Reservation', guests: 2, date: '', description: '', menuType: 'Standard Menu', selectedMenuItems: [] });
+  const [bookingInfo, setBookingInfo] = useState({ name: '', phone: '', email: '' });
   const [showMenuModal, setShowMenuModal] = useState(false);
 
   // Admin Panel State
@@ -164,7 +170,6 @@ export default function App() {
     setTimeout(() => setNotification(null), 5000);
   };
 
-  // --- GOOGLE AUTHENTICATION LOGIC ---
   const handleLogin = async () => {
     if (!auth) return showNotification("Please add Firebase Config in App.jsx!", "error");
     try {
@@ -182,14 +187,9 @@ export default function App() {
     setCurrentView('home');
   };
 
-  // --- CUSTOMER "FOOD READY" NOTIFICATION SYSTEM ---
   useEffect(() => {
     if (currentUser) {
-      const readyOrders = allOrders.filter(o =>
-        o.customer.email === currentUser.email &&
-        o.status === 'Ready to Serve'
-      );
-
+      const readyOrders = allOrders.filter(o => o.customer.email === currentUser.email && o.status === 'Ready to Serve');
       readyOrders.forEach(order => {
         if (!notifiedOrders.includes(order.id)) {
           showNotification(`🔔 ${currentUser.displayName}, your food is ready for collect. Enjoy your food!`, 'success');
@@ -200,16 +200,13 @@ export default function App() {
   }, [allOrders, currentUser, notifiedOrders]);
 
 
-  // --- ENQUIRY EMAIL JS LOGIC ---
   const sendEmail = (e) => {
     e.preventDefault();
     setIsSendingMail(true);
-
     if (!formRef.current.user_name.value || !formRef.current.user_email.value || !formRef.current.message.value) {
       showNotification("Please fill all fields!", "error");
       setIsSendingMail(false); return;
     }
-
     emailjs.sendForm('service_aicywzk', 'template_9n9tk2g', formRef.current, 'Fabn3ObqC-RdCDk0L')
       .then(() => {
         showNotification("Enquiry sent successfully! We will reply soon.");
@@ -221,7 +218,6 @@ export default function App() {
       .finally(() => setIsSendingMail(false));
   };
 
-  // --- VIDEO & SETTINGS MANAGEMENT ---
   const handleVideoUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -253,7 +249,6 @@ export default function App() {
 
   const handleSettingChange = (e) => setAppSettings({ ...appSettings, [e.target.name]: e.target.value });
 
-  // --- MENU MANAGER ---
   const handleItemImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -278,10 +273,7 @@ export default function App() {
     }
   };
 
-  // --- CART LOGIC ---
-  const updateItemQty = (id, delta) => {
-    setItemQuantities(prev => ({ ...prev, [id]: Math.max(1, (prev[id] || 1) + delta) }));
-  };
+  const updateItemQty = (id, delta) => setItemQuantities(prev => ({ ...prev, [id]: Math.max(1, (prev[id] || 1) + delta) }));
 
   const addToCart = (item, qtyToAdd = 1, cartType = 'customer') => {
     const setTargetCart = cartType === 'customer' ? setCustomerCart : setPosCart;
@@ -308,7 +300,6 @@ export default function App() {
 
   const customerCartTotal = useMemo(() => customerCart.reduce((sum, item) => sum + (item.price * item.qty), 0), [customerCart]);
 
-  // --- CUSTOMER PROFILE SAVER ---
   const saveToCustomerRecords = (customerInfo, orderData, isVIP = false) => {
     setCustomerRecords(prevRecords => {
       const existingIdx = prevRecords.findIndex(c => c.phone === customerInfo.phone || (c.email && c.email === customerInfo.email));
@@ -332,7 +323,45 @@ export default function App() {
     });
   };
 
-  // --- ORDER SUBMISSION ---
+  // --- SUBMIT BOOKING RESERVATION ---
+  const toggleMenuItemForBooking = (item) => {
+    const isSelected = bookingData.selectedMenuItems.some(i => i.id === item.id);
+    if (isSelected) setBookingData(prev => ({ ...prev, selectedMenuItems: prev.selectedMenuItems.filter(i => i.id !== item.id) }));
+    else setBookingData(prev => ({ ...prev, selectedMenuItems: [...prev.selectedMenuItems, item] }));
+  };
+
+  const submitBookingRequest = () => {
+    if (!bookingData.date || !bookingData.guests || !bookingInfo.name || !bookingInfo.phone) {
+      return showNotification("Please fill your Name, Phone, Date and Guests!", "error");
+    }
+
+    const newReservation = {
+      id: `RES-${Math.floor(10000 + Math.random() * 90000)}`,
+      timestamp: new Date(),
+      customer: bookingInfo,
+      details: bookingData,
+      status: 'New'
+    };
+
+    // Save to Admin Panel
+    setReservations(prev => [newReservation, ...prev]);
+
+    // Send Email to Admin
+    const templateParams = {
+      user_name: bookingInfo.name,
+      user_email: bookingInfo.email,
+      message: `NEW BOOKING: ${bookingData.guests} guests on ${bookingData.date}. Type: ${bookingData.type}. Phone: ${bookingInfo.phone}. Requests: ${bookingData.description}`
+    };
+    emailjs.send('service_aicywzk', 'template_9n9tk2g', templateParams, 'Fabn3ObqC-RdCDk0L');
+
+    showNotification("Reservation Request Submitted & Saved to Admin Panel!");
+
+    // Reset Form
+    setBookingData({ type: 'Table Reservation', guests: 2, date: '', description: '', menuType: 'Standard Menu', selectedMenuItems: [] });
+    if (!currentUser) setBookingInfo({ name: '', phone: '', email: '' });
+    setShowMenuModal(false);
+  };
+
   const submitCustomerAppOrder = () => {
     if (!customerCheckoutInfo.name || !customerCheckoutInfo.phone) return showNotification("Enter Name and Phone!", "error");
     const newOrder = { id: `APP-${Math.floor(100000 + Math.random() * 900000)}`, timestamp: new Date(), customer: customerCheckoutInfo, items: customerCart, orderType: orderType, source: 'Customer App', status: 'Pending Kitchen', finalTotal: customerCartTotal };
@@ -359,10 +388,9 @@ export default function App() {
 
   const markOrderAsReady = (orderId, customerName) => {
     setAllOrders(prev => prev.map(order => order.id === orderId ? { ...order, status: 'Ready to Serve' } : order));
-    showNotification(`Order marked as Ready!`, 'success');
+    showNotification(`🔔 ORDER READY: ${customerName}'s order is ready!`, 'success');
   };
 
-  // --- ADMIN MATH ---
   const posSubtotal = useMemo(() => posCart.reduce((sum, item) => sum + (item.price * item.qty), 0), [posCart]);
   const memberDiscountAmount = useMemo(() => vipMembership ? posSubtotal * 0.10 : 0, [vipMembership, posSubtotal]);
   const manualDiscountAmount = useMemo(() => (posSubtotal - memberDiscountAmount) * (discountPercent / 100), [posSubtotal, memberDiscountAmount, discountPercent]);
@@ -410,9 +438,10 @@ export default function App() {
                 </button>
               )}
 
+              {/* BRAND LOGO & NAME (CIRCULAR LOGO UPGRADE) */}
               <div className="cursor-pointer flex items-center gap-3" onClick={() => setCurrentView('home')}>
                 {appSettings.logoImage && (
-                  <img src={appSettings.logoImage} alt="App Logo" className="h-8 md:h-10 w-auto object-contain" />
+                  <img src={appSettings.logoImage} alt="App Logo" className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-orange-500 object-cover shadow-lg bg-black" />
                 )}
                 <span className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-600 tracking-tighter uppercase">
                   {appSettings.logoText}<span className="text-white font-light lowercase">{appSettings.logoSubText}</span>
@@ -446,18 +475,6 @@ export default function App() {
                 {customerCart.length > 0 && <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-black rounded-full h-5 w-5 flex items-center justify-center">{customerCart.length}</span>}
               </button>
             </div>
-
-            <div className="md:hidden flex items-center gap-3">
-              {currentUser && (
-                <button onClick={() => setCurrentView('customerDashboard')}>
-                  <img src={currentUser.photoURL} alt="Profile" className="w-8 h-8 rounded-full border-2 border-orange-500" />
-                </button>
-              )}
-              <button onClick={() => setShowCustomerCheckout(true)} className="relative p-2 text-gray-300 bg-white/5 rounded-full">
-                <ShoppingCart size={18} />
-                {customerCart.length > 0 && <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-black rounded-full h-5 w-5 flex items-center justify-center">{customerCart.length}</span>}
-              </button>
-            </div>
           </div>
         </nav>
 
@@ -467,11 +484,13 @@ export default function App() {
           {currentView === 'home' && (
             <>
               <div className="h-[75vh] flex flex-col items-start justify-center animate-in fade-in slide-in-from-left-8 duration-1000">
-                <h1 className="text-5xl md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-tighter mb-8 text-shadow-xl uppercase">
-                  {appSettings.homeTitle.split(' ').map((word, index) => (
-                    word.toLowerCase() === 'the' ? <span key={index} className="text-yellow-400">THE </span> :
-                      word.toLowerCase() === 'future.' ? <span key={index} className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-600">FUTURE. </span> : word + ' '
-                  ))}
+                <h1 className="text-5xl md:text-7xl lg:text-8xl font-black leading-[0.9] tracking-tighter mb-8 text-shadow-xl uppercase max-w-4xl">
+                  {appSettings.homeTitle.split(' ').map((word, index) => {
+                    const w = word.toLowerCase().replace(/[^a-z]/g, '');
+                    if (w === 'the' || w === 'of') return <span key={index} className="text-yellow-400">{word} </span>;
+                    if (w === 'future') return <span key={index} className="text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-red-600">{word} </span>;
+                    return word + ' ';
+                  })}
                 </h1>
                 <div className="flex flex-wrap gap-4 w-full md:w-auto">
                   <button onClick={() => setCurrentView('menu')} className="w-full md:w-auto px-10 py-5 bg-gradient-to-r from-orange-600 to-red-600 rounded-full font-black text-lg hover:scale-105 transition-transform shadow-orange-500/20 shadow-2xl">START ORDER</button>
@@ -498,7 +517,7 @@ export default function App() {
             </>
           )}
 
-          {/* CUSTOMER PROFILE DASHBOARD */}
+          {/* CUSTOMER DASHBOARD */}
           {currentView === 'customerDashboard' && currentUser && (
             <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-10">
               <div className="bg-black/60 backdrop-blur-xl rounded-[40px] p-10 border border-white/10 shadow-2xl mb-8">
@@ -591,11 +610,17 @@ export default function App() {
             </div>
           )}
 
-          {/* BOOKING */}
+          {/* BOOKING (UPDATED WITH CUSTOMER INFO FIELDS & ADMIN STORAGE) */}
           {currentView === 'book' && (
-            <div className="max-w-4xl mx-auto bg-black/60 p-6 md:p-10 rounded-3xl md:rounded-[40px] border border-white/10 backdrop-blur-xl animate-in slide-in-from-bottom-10 flex flex-col lg:flex-row gap-8">
+            <div className="max-w-5xl mx-auto bg-black/60 p-6 md:p-10 rounded-3xl md:rounded-[40px] border border-white/10 backdrop-blur-xl animate-in slide-in-from-bottom-10 flex flex-col lg:flex-row gap-8">
               <div className="flex-1 space-y-6">
                 <h2 className="text-3xl md:text-4xl font-black mb-6 flex items-center gap-3"><Calendar className="text-orange-500" /> Book Event</h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-4 border-b border-white/10">
+                  <div><label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Name *</label><input type="text" value={bookingInfo.name} onChange={e => setBookingInfo({ ...bookingInfo, name: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-orange-500 transition text-sm" placeholder="Your Name" /></div>
+                  <div><label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Phone *</label><input type="tel" value={bookingInfo.phone} onChange={e => setBookingInfo({ ...bookingInfo, phone: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-orange-500 transition text-sm" placeholder="Phone Number" /></div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Event Type</label>
                   <select className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-orange-500 transition font-medium appearance-none" value={bookingData.type} onChange={e => setBookingData({ ...bookingData, type: e.target.value })}>
@@ -603,21 +628,26 @@ export default function App() {
                   </select>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div><label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Date & Time</label><input type="datetime-local" value={bookingData.date} onChange={e => setBookingData({ ...bookingData, date: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-orange-500 transition [color-scheme:dark]" /></div>
-                  <div><label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Guests</label><input type="number" min="1" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-orange-500 transition" value={bookingData.guests} onChange={e => setBookingData({ ...bookingData, guests: e.target.value })} /></div>
+                  <div><label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Date & Time *</label><input type="datetime-local" value={bookingData.date} onChange={e => setBookingData({ ...bookingData, date: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-orange-500 transition [color-scheme:dark]" /></div>
+                  <div><label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Guests *</label><input type="number" min="1" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-orange-500 transition" value={bookingData.guests} onChange={e => setBookingData({ ...bookingData, guests: e.target.value })} /></div>
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Description / Custom Requests</label>
-                  <textarea rows="4" className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-orange-500 transition resize-none" placeholder="Describe how you want to customize your menu or event..."></textarea>
+                  <textarea rows="4" value={bookingData.description} onChange={e => setBookingData({ ...bookingData, description: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-orange-500 transition resize-none" placeholder="Describe how you want to customize your menu or event..."></textarea>
                 </div>
-                <button onClick={() => { showNotification("Reservation Request Submitted Successfully!"); setBookingData({ type: 'Table Reservation', guests: 2, date: '', description: '', menuType: 'Standard Menu', selectedMenuItems: [] }); }} className="w-full py-5 bg-gradient-to-r from-orange-600 to-red-600 rounded-2xl font-black text-xl hover:scale-[1.02] transition shadow-xl mt-4">SUBMIT REQUEST</button>
+                <button onClick={submitBookingRequest} className="w-full py-5 bg-gradient-to-r from-orange-600 to-red-600 rounded-2xl font-black text-xl hover:scale-[1.02] transition shadow-xl mt-4">SUBMIT REQUEST</button>
               </div>
-              <div className="w-full lg:w-72 bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col shrink-0">
+              <div className="w-full lg:w-72 bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col shrink-0 h-fit sticky top-28">
                 <label className="block text-xs font-bold text-gray-500 mb-3 uppercase tracking-widest">Standard Menu Selection</label>
                 <button onClick={() => setShowMenuModal(true)} className="w-full text-left py-4 px-5 rounded-xl border border-white/20 bg-black/30 hover:border-orange-500 transition text-sm font-medium text-gray-300">Choose from Restaurant Menu...</button>
                 {bookingData.selectedMenuItems.length > 0 && (
-                  <div className="mt-5 space-y-2 text-xs text-gray-400 overflow-y-auto max-h-48 pr-2">
-                    {bookingData.selectedMenuItems.map(item => <p key={item.id}>• {item.name}</p>)}
+                  <div className="mt-5 space-y-2 text-xs text-gray-400 overflow-y-auto max-h-64 pr-2 custom-scrollbar">
+                    {bookingData.selectedMenuItems.map(item => (
+                      <div key={item.id} className="flex items-center gap-2 bg-black/40 p-2 rounded-lg border border-white/5">
+                        <img src={item.image} className="w-6 h-6 rounded object-cover" />
+                        <span className="truncate">{item.name}</span>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -632,6 +662,7 @@ export default function App() {
               <div className="flex lg:flex-col gap-3 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 lg:w-56 shrink-0 selection:bg-none hide-scrollbar">
                 <button onClick={() => setAdminTab('dashboard')} className={`flex items-center gap-3 px-5 py-4 rounded-2xl font-bold whitespace-nowrap transition-all ${adminTab === 'dashboard' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 bg-black/40 border border-white/10 hover:bg-white/5'}`}><BarChart3 size={18} /> Dashboard</button>
                 <button onClick={() => setAdminTab('orders')} className={`flex items-center gap-3 px-5 py-4 rounded-2xl font-bold whitespace-nowrap transition-all ${adminTab === 'orders' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 bg-black/40 border border-white/10 hover:bg-white/5'}`}><ClipboardList size={18} /> Live Orders</button>
+                <button onClick={() => setAdminTab('reservations')} className={`flex items-center gap-3 px-5 py-4 rounded-2xl font-bold whitespace-nowrap transition-all ${adminTab === 'reservations' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 bg-black/40 border border-white/10 hover:bg-white/5'}`}><Calendar size={18} /> Reservations</button>
                 <button onClick={() => setAdminTab('pos')} className={`flex items-center gap-3 px-5 py-4 rounded-2xl font-bold whitespace-nowrap transition-all ${adminTab === 'pos' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 bg-black/40 border border-white/10 hover:bg-white/5'}`}><Calculator size={18} /> Point of Sale</button>
                 <button onClick={() => setAdminTab('menuManager')} className={`flex items-center gap-3 px-5 py-4 rounded-2xl font-bold whitespace-nowrap transition-all ${adminTab === 'menuManager' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 bg-black/40 border border-white/10 hover:bg-white/5'}`}><PackagePlus size={18} /> Menu Manager</button>
                 <button onClick={() => setAdminTab('records')} className={`flex items-center gap-3 px-5 py-4 rounded-2xl font-bold whitespace-nowrap transition-all ${adminTab === 'records' ? 'bg-orange-600 text-white shadow-lg' : 'text-gray-400 bg-black/40 border border-white/10 hover:bg-white/5'}`}><User size={18} /> Customers</button>
@@ -643,18 +674,18 @@ export default function App() {
 
                 {/* Dashboard */}
                 {adminTab === 'dashboard' && (
-                  <div className="space-y-6 md:space-y-10 overflow-y-auto pr-2">
+                  <div className="space-y-6 md:space-y-10 overflow-y-auto pr-2 custom-scrollbar">
                     <h3 className="text-2xl md:text-3xl font-black mb-4 flex items-center gap-3"><BarChart3 className="text-orange-500" /> Admin Dashboard</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                      <div className="bg-white/5 p-5 md:p-6 rounded-3xl border border-white/10 flex items-center gap-4">
+                      <div className="bg-white/5 p-5 md:p-6 rounded-3xl border border-white/10 flex items-center gap-4 shadow-lg">
                         <div className="p-3 md:p-4 rounded-full bg-green-500/20 text-green-400"><DollarSign size={24} /></div>
                         <div><p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Daily Sell</p><p className="text-2xl md:text-4xl font-black">${totalSellDay.toFixed(2)}</p></div>
                       </div>
-                      <div className="bg-white/5 p-5 md:p-6 rounded-3xl border border-white/10 flex items-center gap-4">
+                      <div className="bg-white/5 p-5 md:p-6 rounded-3xl border border-white/10 flex items-center gap-4 shadow-lg">
                         <div className="p-3 md:p-4 rounded-full bg-orange-500/20 text-orange-400"><TrendingUp size={24} /></div>
                         <div><p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Top Item</p><p className="text-xl md:text-3xl font-black line-clamp-1">{topSellingItem}</p></div>
                       </div>
-                      <div className="bg-white/5 p-5 md:p-6 rounded-3xl border border-white/10 flex items-center gap-4">
+                      <div className="bg-white/5 p-5 md:p-6 rounded-3xl border border-white/10 flex items-center gap-4 shadow-lg">
                         <div className="p-3 md:p-4 rounded-full bg-yellow-500/20 text-yellow-400"><Calendar size={24} /></div>
                         <div><p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Monthly Sell</p><p className="text-2xl md:text-4xl font-black">${totalSellMonth.toFixed(2)}</p></div>
                       </div>
@@ -662,14 +693,14 @@ export default function App() {
                   </div>
                 )}
 
-                {/* Orders */}
+                {/* Live Orders */}
                 {adminTab === 'orders' && (
                   <div className="flex-1 overflow-hidden flex flex-col">
                     <h3 className="text-2xl md:text-3xl font-black mb-6 flex items-center gap-3"><ClipboardList className="text-orange-500" /> Live Orders Tracking</h3>
                     <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
                       {allOrders.length === 0 ? <p className="text-gray-500 text-center py-20 font-bold">No orders received yet today.</p> :
                         allOrders.map(order => (
-                          <div key={order.id} className={`p-5 rounded-2xl border ${order.status === 'Ready to Serve' ? 'bg-green-900/20 border-green-500/50' : 'bg-white/5 border-white/10'}`}>
+                          <div key={order.id} className={`p-5 rounded-2xl border shadow-lg ${order.status === 'Ready to Serve' ? 'bg-green-900/20 border-green-500/50' : 'bg-white/5 border-white/10'}`}>
                             <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 mb-4 pb-4 border-b border-white/10">
                               <div>
                                 <p className="text-xs text-gray-400 font-mono mb-1">{order.id} • {order.timestamp.toLocaleTimeString()}</p>
@@ -697,11 +728,41 @@ export default function App() {
                   </div>
                 )}
 
+                {/* NEW TAB: RESERVATIONS TRACKING */}
+                {adminTab === 'reservations' && (
+                  <div className="flex-1 overflow-hidden flex flex-col">
+                    <h3 className="text-2xl md:text-3xl font-black mb-6 flex items-center gap-3"><Calendar className="text-orange-500" /> Table Reservations</h3>
+                    <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
+                      {reservations.length === 0 ? <p className="text-gray-500 text-center py-20 font-bold">No reservations yet.</p> :
+                        reservations.map(res => (
+                          <div key={res.id} className="bg-white/5 p-5 rounded-2xl border border-white/10 flex flex-col md:flex-row gap-4 justify-between shadow-lg">
+                            <div>
+                              <span className="text-xs text-orange-400 font-mono tracking-widest">{res.id}</span>
+                              <h4 className="text-xl font-black mt-1">{res.customer.name} <span className="text-sm font-medium text-gray-400">({res.customer.phone})</span></h4>
+                              <p className="text-sm font-bold mt-2 text-white">Event: {res.details.type}</p>
+                              <p className="text-sm text-gray-300 mt-1">Date: {new Date(res.details.date).toLocaleString()} &nbsp;•&nbsp; Guests: {res.details.guests}</p>
+
+                              {res.details.selectedMenuItems.length > 0 && (
+                                <p className="text-xs text-gray-400 mt-3 font-medium leading-relaxed">Selected Menu:<br /> <span className="text-gray-300">{res.details.selectedMenuItems.map(i => i.name).join(', ')}</span></p>
+                              )}
+                              {res.details.description && <p className="text-sm text-gray-400 italic mt-3 bg-black/40 p-3 rounded-lg border border-white/5">"{res.details.description}"</p>}
+                            </div>
+                            <div className="text-left md:text-right">
+                              <span className="px-3 py-1 bg-blue-500/20 text-blue-400 text-xs font-black uppercase rounded-md">{res.status}</span>
+                            </div>
+                          </div>
+                        ))
+                      }
+                    </div>
+                  </div>
+                )}
+
                 {/* FULL REDESIGNED POS */}
                 {adminTab === 'pos' && (
                   <div className="flex-1 flex flex-col h-full overflow-hidden animate-in fade-in">
                     <h3 className="text-xl md:text-2xl font-black flex items-center gap-3 mb-6"><Calculator className="text-orange-500" /> {appSettings.appName} POS</h3>
                     <div className="flex-1 flex gap-4 lg:gap-6 min-h-0 overflow-hidden flex-col lg:flex-row">
+
                       {/* 1. Category Column */}
                       <div className="lg:w-36 flex lg:flex-col gap-2 shrink-0 overflow-x-auto lg:overflow-visible pb-2 lg:pb-0 hide-scrollbar">
                         {categoryList.map(cat => (
@@ -711,24 +772,26 @@ export default function App() {
                         ))}
                       </div>
 
-                      {/* 2. Item Grid Column (PERFECT ALIGNMENT UPDATE) */}
-                      <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 overflow-y-auto pr-2 custom-scrollbar min-h-[300px] lg:min-h-0">
+                      {/* 2. Item Grid Column (NEW PERFECT LEFT-ALIGNED BOX STRUCTURE) */}
+                      <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 overflow-y-auto pr-2 custom-scrollbar min-h-[300px] lg:min-h-0 content-start">
                         {filteredCustomerMenu.map(item => (
-                          <div key={item.id} onClick={() => addToCart(item, 1, 'pos')} className="bg-black/60 backdrop-blur-sm rounded-2xl p-3 border border-white/10 cursor-pointer hover:border-orange-500 transition-all flex flex-col text-left shadow-xl group relative overflow-hidden">
+                          <div key={item.id} onClick={() => addToCart(item, 1, 'pos')} className="bg-white/5 hover:bg-white/10 rounded-2xl p-2 border border-white/20 cursor-pointer hover:border-orange-500 transition-all flex flex-col text-left shadow-lg group relative overflow-hidden h-[210px]">
 
+                            {/* Image Container */}
                             <div className="relative w-full h-24 mb-2 rounded-xl overflow-hidden shrink-0">
-                              <img src={item.image} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" />
-                              <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition"></div>
+                              <img src={item.image} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+                              <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition"></div>
                               <div className="absolute top-2 right-2 bg-orange-600 rounded-full p-1 opacity-0 group-hover:opacity-100 transition shadow-lg"><Plus size={14} className="text-white" /></div>
                             </div>
 
-                            <div className="flex flex-col flex-1 min-w-0">
-                              <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-0.5">{item.category}</p>
-                              <h4 className="font-bold text-sm truncate mb-1 leading-tight text-white">{item.name}</h4>
+                            {/* Text & Price Data Box */}
+                            <div className="flex flex-col flex-1 min-w-0 bg-black/40 p-2.5 rounded-xl border border-white/5">
+                              <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-0.5 truncate">{item.category}</p>
+                              <h4 className="font-bold text-xs truncate mb-1 text-white">{item.name}</h4>
 
-                              <div className="mt-auto pt-2 flex items-center justify-between border-t border-white/5">
-                                <span className="text-lg font-black text-orange-400">${item.price.toFixed(2)}</span>
-                                <span className="text-[10px] font-black tracking-widest text-gray-600 group-hover:text-orange-500 transition uppercase">Add</span>
+                              <div className="mt-auto pt-1 flex items-center justify-between">
+                                <span className="text-sm font-black text-orange-400">${item.price.toFixed(2)}</span>
+                                <span className="text-[9px] font-black tracking-widest text-gray-500 group-hover:text-orange-500 transition uppercase">Add</span>
                               </div>
                             </div>
 
@@ -743,14 +806,13 @@ export default function App() {
                           <span className="bg-orange-600 text-xs px-2 py-1 rounded-md">{posCart.length} Items</span>
                         </h3>
 
-                        {/* Dynamic Cart Section */}
                         <div className="flex-1 overflow-y-auto space-y-3 mb-4 border-b border-white/10 pb-4 custom-scrollbar min-h-[150px]">
                           {posCart.length === 0 ? <p className="text-gray-500 text-center text-sm mt-10">Cart is empty. Tap items to add.</p> :
                             posCart.map((item, idx) => (
-                              <div key={idx} className="flex gap-2 text-xs items-center text-white bg-white/5 p-2 rounded-xl">
+                              <div key={idx} className="flex gap-2 text-xs items-center text-white bg-white/5 p-2 rounded-xl border border-white/5">
                                 <img src={item.image} className="w-10 h-10 rounded-lg object-cover" />
                                 <div className="flex-1 font-bold truncate pr-1">{item.name}</div>
-                                <div className="flex items-center gap-1 bg-black/40 rounded-md p-1">
+                                <div className="flex items-center gap-1 bg-black/40 rounded-md p-1 border border-white/5">
                                   <button onClick={() => changeQty(item.id, -1, 'pos')} className="hover:text-orange-500 p-0.5"><Minus size={12} /></button>
                                   <span className="text-orange-400 font-bold w-4 text-center">{item.qty}</span>
                                   <button onClick={() => changeQty(item.id, 1, 'pos')} className="hover:text-orange-500 p-0.5"><Plus size={12} /></button>
@@ -762,7 +824,6 @@ export default function App() {
                           }
                         </div>
 
-                        {/* Customer Info Form */}
                         <div className="space-y-2 mb-4">
                           <input type="text" placeholder="* Customer Name" value={posCustomerInfo.name} onChange={e => setPosCustomerInfo({ ...posCustomerInfo, name: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-orange-500 text-xs" />
                           <div className="flex gap-2">
@@ -771,10 +832,8 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* Discounts and Totals */}
                         <div className="space-y-2 mb-4 text-xs font-medium">
                           <div className="flex justify-between text-gray-400"><span>Subtotal</span> <span>${posSubtotal.toFixed(2)}</span></div>
-
                           <div className="flex justify-between items-center py-1">
                             <label className="flex items-center gap-2 cursor-pointer hover:text-white transition text-gray-400" onClick={(e) => { e.preventDefault(); setVipMembership(!vipMembership); }}>
                               <div className={`w-4 h-4 rounded flex items-center justify-center border transition ${vipMembership ? 'bg-orange-600 border-orange-600' : 'border-gray-500'}`}>
@@ -784,37 +843,35 @@ export default function App() {
                             </label>
                             {vipMembership && <span className="text-green-400">-${memberDiscountAmount.toFixed(2)}</span>}
                           </div>
-
                           <div className="flex justify-between items-center py-1 border-b border-white/10 pb-3">
                             <span className="text-gray-400 flex items-center gap-2">Manual Dis. <input type="number" min="0" max="100" value={discountPercent} onChange={e => setDiscountPercent(e.target.value)} className="w-12 bg-white/10 border border-white/20 rounded p-1 text-center text-white outline-none" />%</span>
                             {discountPercent > 0 && <span className="text-orange-400">-${manualDiscountAmount.toFixed(2)}</span>}
                           </div>
                         </div>
 
-                        {/* Total and Charge Button */}
                         <div className="flex justify-between items-end mb-4 pt-1 gap-2">
-                          <span className="text-gray-400 font-bold text-sm">Amount Due</span>
-                          <span className="text-4xl font-black text-orange-400">${posFinalTotal.toFixed(2)}</span>
+                          <span className="text-gray-400 font-bold text-sm">Total</span>
+                          <span className="text-3xl font-black text-orange-400">${posFinalTotal.toFixed(2)}</span>
                         </div>
 
                         <div className="grid grid-cols-2 gap-2 mb-2">
                           <button onClick={() => { setPosCart([]); setPosCustomerInfo({ name: '', phone: '', email: '' }); showNotification("Cart Cleared"); }} className="py-2.5 bg-white/5 border border-white/10 text-white rounded-xl font-bold text-xs hover:bg-white/10 transition flex items-center justify-center gap-2"><Trash2 size={14} /> Clear</button>
                           <button onClick={() => showNotification("Order Saved to Drafts!")} className="py-2.5 bg-white/5 border border-white/10 text-white rounded-xl font-bold text-xs hover:bg-white/10 transition flex items-center justify-center gap-2"><Save size={14} /> Save Order</button>
                         </div>
-                        <button onClick={processPOSOrderPayment} className="w-full py-3.5 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-xl font-black text-sm md:text-base hover:shadow-lg transition">
-                          <Calculator className="inline mr-2" size={18} /> CHARGE & PRINT
+                        <button onClick={processPOSOrderPayment} className="w-full py-3.5 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl font-black text-sm hover:shadow-lg transition flex justify-center items-center gap-2 shadow-orange-600/20">
+                          <Printer size={16} /> CHARGE ${(posFinalTotal).toFixed(2)}
                         </button>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* APP SETTINGS TAB (Logo, Titles, Video) */}
+                {/* APP SETTINGS TAB */}
                 {adminTab === 'settings' && (
                   <div className="flex-1 overflow-y-auto space-y-6 pr-2 animate-in fade-in custom-scrollbar">
                     <h3 className="text-2xl font-black flex items-center gap-3 mb-6"><Settings2 className="text-orange-500" /> App Settings</h3>
 
-                    <div className="bg-white/5 p-6 rounded-3xl border border-white/10 flex flex-col sm:flex-row gap-6 items-center">
+                    <div className="bg-white/5 p-6 rounded-3xl border border-white/10 flex flex-col sm:flex-row gap-6 items-center shadow-lg">
                       <div className="flex-1 w-full">
                         <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Brand Logo (PNG/JPG)</label>
                         <label className="w-full border border-white/10 rounded-xl p-4 text-sm flex items-center justify-center cursor-pointer transition bg-black/40 text-gray-400 hover:bg-white/10 font-bold">
@@ -823,13 +880,13 @@ export default function App() {
                         </label>
                       </div>
                       {appSettings.logoImage && (
-                        <div className="w-24 h-24 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
-                          <img src={appSettings.logoImage} alt="Logo" className="w-full h-full object-contain p-2" />
+                        <div className="w-24 h-24 rounded-full bg-black border-4 border-orange-500 flex items-center justify-center overflow-hidden shrink-0 shadow-xl">
+                          <img src={appSettings.logoImage} alt="Logo" className="w-full h-full object-cover" />
                         </div>
                       )}
                     </div>
 
-                    <div className="bg-white/5 p-6 rounded-3xl border border-white/10 flex flex-col sm:flex-row gap-6 items-center">
+                    <div className="bg-white/5 p-6 rounded-3xl border border-white/10 flex flex-col sm:flex-row gap-6 items-center shadow-lg">
                       <div className="flex-1 w-full">
                         <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Background Video (.mp4)</label>
                         <label className="w-full border border-white/10 rounded-xl p-4 text-sm flex items-center justify-center cursor-pointer transition bg-black/40 text-gray-400 hover:bg-white/10 font-bold">
@@ -841,7 +898,7 @@ export default function App() {
                       <video src={videoSource} autoPlay loop muted className="w-full sm:w-48 h-32 rounded-2xl object-cover border border-white/10 shadow-2xl" />
                     </div>
 
-                    <div className="bg-white/5 p-6 rounded-3xl border border-white/10 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-white/5 p-6 rounded-3xl border border-white/10 grid grid-cols-1 md:grid-cols-2 gap-6 shadow-lg">
                       <div>
                         <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest">Logo Main Text</label>
                         <input type="text" name="logoText" value={appSettings.logoText} onChange={handleSettingChange} className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-white outline-none focus:border-orange-500" />
@@ -871,7 +928,7 @@ export default function App() {
                 {adminTab === 'menuManager' && (
                   <div className="flex-1 overflow-hidden flex flex-col space-y-6">
                     <h3 className="text-xl md:text-2xl font-black flex items-center gap-3"><PackagePlus className="text-orange-500" /> Menu Manager</h3>
-                    <div className="bg-white/5 p-4 md:p-6 rounded-3xl border border-white/10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+                    <div className="bg-white/5 p-4 md:p-6 rounded-3xl border border-white/10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end shadow-lg">
                       <div><input type="text" placeholder="Name" value={newItemForm.name} onChange={e => setNewItemForm({ ...newItemForm, name: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-white" /></div>
                       <div><input type="number" placeholder="Price ($)" value={newItemForm.price} onChange={e => setNewItemForm({ ...newItemForm, price: e.target.value })} className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-white" /></div>
                       <div>
@@ -935,6 +992,7 @@ export default function App() {
                                 <p className="text-2xl font-black text-green-400">${c.totalSpent.toFixed(2)}</p>
                               </div>
                             </div>
+
                             <div>
                               <p className="text-xs font-bold text-gray-500 uppercase mb-3 tracking-widest">Complete Order History</p>
                               <div className="space-y-2">
@@ -964,12 +1022,10 @@ export default function App() {
 
       {/* --- QUICK ACTIONS (FABs) --- */}
       <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-[100] print:hidden">
-        {/* WHATSAPP CHAT FAB */}
         <a href="https://wa.me/qr/WESWWPZOLUQ4H1" target="_blank" rel="noopener noreferrer" className="w-14 h-14 bg-green-500 text-white rounded-full flex items-center justify-center shadow-2xl shadow-green-500/40 hover:scale-110 transition-transform">
           <Phone size={24} />
         </a>
 
-        {/* Cart FAB */}
         {currentView === 'menu' && customerCart.length > 0 && (
           <button onClick={() => setShowCustomerCheckout(true)} className="w-14 h-14 bg-orange-600 text-white rounded-full flex items-center justify-center shadow-2xl shadow-orange-600/40 hover:scale-110 transition-transform relative">
             <ShoppingBag size={24} />
@@ -977,7 +1033,6 @@ export default function App() {
           </button>
         )}
 
-        {/* Scroll Up FAB */}
         {showScrollFAB && (
           <button onClick={scrollToTop} className="w-12 h-12 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-full flex items-center justify-center shadow-xl hover:bg-white/20 transition-all self-end">
             <ArrowUp size={20} />
@@ -994,7 +1049,7 @@ export default function App() {
               <h4 className="text-xl md:text-2xl font-black">Select Standard Menu Items</h4>
               <button onClick={() => setShowMenuModal(false)} className="p-2 bg-white/10 rounded-full"><X size={20} /></button>
             </div>
-            <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-1 sm:grid-cols-2 gap-3 custom-scrollbar">
               {menuItems.map(item => {
                 const isSelected = bookingData.selectedMenuItems.some(i => i.id === item.id);
                 return (
@@ -1030,9 +1085,9 @@ export default function App() {
             <div className="max-h-40 overflow-y-auto space-y-3 mb-6 pr-2 custom-scrollbar">
               {customerCart.length === 0 ? <p className="text-gray-500 text-center py-4 text-sm">Add some delicious items first!</p> :
                 customerCart.map(item => (
-                  <div key={item.id} className="flex justify-between items-center text-sm">
+                  <div key={item.id} className="flex justify-between items-center text-sm bg-white/5 p-2 rounded-xl">
                     <div className="flex items-center gap-2 w-2/3">
-                      <button onClick={() => removeFromCart(item.id)} className="text-gray-600 hover:text-red-500"><X size={14} /></button>
+                      <button onClick={() => removeFromCart(item.id)} className="text-gray-600 hover:text-red-500 bg-black/40 p-1 rounded"><X size={14} /></button>
                       <span className="font-bold truncate">{item.name}</span>
                     </div>
                     <div className="flex items-center gap-3">
@@ -1049,7 +1104,7 @@ export default function App() {
               <span className="font-black">${customerCartTotal.toFixed(2)}</span>
             </div>
 
-            <button onClick={submitCustomerAppOrder} className="w-full py-4 bg-orange-600 rounded-xl font-black hover:bg-orange-500 transition shadow-lg">PLACE {orderType.toUpperCase()} ORDER</button>
+            <button onClick={submitCustomerAppOrder} className="w-full py-4 bg-gradient-to-r from-orange-600 to-red-600 rounded-xl font-black hover:shadow-lg transition shadow-orange-600/20">PLACE {orderType.toUpperCase()} ORDER</button>
           </div>
         </div>
       )}
@@ -1060,7 +1115,7 @@ export default function App() {
           <div className="bg-white text-black w-full max-w-sm rounded-3xl p-8 flex flex-col shadow-2xl print:shadow-none print:w-full print:rounded-none">
             <div className="text-center mb-6 border-b border-dashed border-gray-300 pb-4">
               <h2 className="text-2xl font-black uppercase mb-1 flex items-center justify-center gap-2">
-                {appSettings.logoImage && <img src={appSettings.logoImage} className="h-6 w-auto" alt="Logo" />}
+                {appSettings.logoImage && <img src={appSettings.logoImage} className="h-6 w-auto rounded-full" alt="Logo" />}
                 {appSettings.logoText}<span className="font-light">{appSettings.logoSubText}</span>
               </h2>
               <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Official Receipt</p>

@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@layer components {
+
+    /* Custom input styling consistent with branding */
+    .input-style {
+        @apply w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white outline-none focus:border-orange-500 transition font-medium placeholder:text-gray-600 placeholder:font-bold;
+    }
+
+    /* Standardized labels across dynamic forms */
+    .label-style {
+        @apply block text-xs font-bold text-gray-500 mb-2 uppercase tracking-widest;
+    }
+
+    /* dynamic Admin Panel Navigation Buttons */
+    .admin-nav-btn {
+        @apply flex items-center gap-4 px-6 py-5 rounded-2xl font-bold text-left transition text-gray-400 border border-white/10 hover:bg-white/5;
+    }
+
+    .admin-nav-btn.active {
+        @apply bg-white text-black border-white shadow-lg;
+    }
+
+    /* Custom elegant dark scrollbar for internal areas */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        @apply bg-white/5 rounded-full;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        @apply bg-gray-700 rounded-full hover:bg-orange-500;
+    }
+}

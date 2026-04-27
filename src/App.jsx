@@ -9,7 +9,10 @@ import {
 } from 'lucide-react';
 import emailjs from '@emailjs/browser';
 
+// --- MEDIA IMPORTS MUST BE AT THE VERY TOP ---
 import bgVideo from './assets/Burger_and_Cola_Assembly_Video.mp4';
+import defaultLogo from './assets/logo.png'; // <--- THIS LOADS YOUR LOGO FROM THE ASSETS FOLDER
+
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'firebase/auth';
 
@@ -52,11 +55,12 @@ const initialMenuData = [
 const categoryList = ["All Items", "Burgers", "Pizza", "Snacks", "Drinks", "Combos"];
 const eventTypes = ["Table Reservation", "Birthday Party", "Corporate Event", "Wedding", "Farewell", "Other"];
 
+// --- APP DEFAULT SETTINGS WITH IMPORTED LOGO ---
 const defaultSettings = {
-  logoImage: null,
+  logoImage: defaultLogo, // <--- DEFAULT LOGO IMPORTED FROM ASSETS
   logoText: "STOMAK",
   logoSubText: "Solution",
-  homeTitle: "TASTE THE FOOD OF FUTURE.", // UPDATED TITLE
+  homeTitle: "TASTE THE FOOD OF FUTURE.",
   appName: "Stomak OS"
 };
 
@@ -86,7 +90,10 @@ export default function App() {
   // --- CORE SYSTEM STATE WITH LOCALSTORAGE PERSISTENCE ---
   const [appSettings, setAppSettings] = useState(() => {
     const saved = localStorage.getItem('stomak_settings');
-    return saved ? JSON.parse(saved) : defaultSettings;
+    // If local storage doesn't have a logo but our default does, force an update
+    const parsed = saved ? JSON.parse(saved) : defaultSettings;
+    if (!parsed.logoImage && defaultLogo) parsed.logoImage = defaultLogo;
+    return parsed;
   });
 
   const [menuItems, setMenuItems] = useState(() => {
@@ -99,7 +106,6 @@ export default function App() {
     return saved ? JSON.parse(saved).map(order => ({ ...order, timestamp: new Date(order.timestamp) })) : [];
   });
 
-  // NEW: Reservations State
   const [reservations, setReservations] = useState(() => {
     const saved = localStorage.getItem('stomak_reservations');
     return saved ? JSON.parse(saved).map(res => ({ ...res, timestamp: new Date(res.timestamp) })) : [];
@@ -343,10 +349,8 @@ export default function App() {
       status: 'New'
     };
 
-    // Save to Admin Panel
     setReservations(prev => [newReservation, ...prev]);
 
-    // Send Email to Admin
     const templateParams = {
       user_name: bookingInfo.name,
       user_email: bookingInfo.email,
@@ -356,7 +360,6 @@ export default function App() {
 
     showNotification("Reservation Request Submitted & Saved to Admin Panel!");
 
-    // Reset Form
     setBookingData({ type: 'Table Reservation', guests: 2, date: '', description: '', menuType: 'Standard Menu', selectedMenuItems: [] });
     if (!currentUser) setBookingInfo({ name: '', phone: '', email: '' });
     setShowMenuModal(false);
@@ -433,12 +436,12 @@ export default function App() {
           <div className="max-w-7xl mx-auto px-4 md:px-6 h-20 flex justify-between items-center">
             <div className="flex items-center gap-4">
               {currentView !== 'home' && (
-                <button onClick={() => setCurrentView('home')} className="p-2 text-gray-400 hover:text-white bg-white/5 rounded-full hover:bg-white/10 transition">
+                <button onClick={() => setCurrentView('home')} className="p-2 text-gray-400 hover:text-white bg-white/5 rounded-full hover:bg-white/10 transition flex items-center justify-center">
                   <ChevronLeft size={20} />
                 </button>
               )}
 
-              {/* BRAND LOGO & NAME (CIRCULAR LOGO UPGRADE) */}
+              {/* --- PERFECT CIRCLE LOGO --- */}
               <div className="cursor-pointer flex items-center gap-3" onClick={() => setCurrentView('home')}>
                 {appSettings.logoImage && (
                   <img src={appSettings.logoImage} alt="App Logo" className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-orange-500 object-cover shadow-lg bg-black" />
@@ -475,6 +478,18 @@ export default function App() {
                 {customerCart.length > 0 && <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-black rounded-full h-5 w-5 flex items-center justify-center">{customerCart.length}</span>}
               </button>
             </div>
+
+            <div className="md:hidden flex items-center gap-3">
+              {currentUser && (
+                <button onClick={() => setCurrentView('customerDashboard')}>
+                  <img src={currentUser.photoURL} alt="Profile" className="w-8 h-8 rounded-full border-2 border-orange-500" />
+                </button>
+              )}
+              <button onClick={() => setShowCustomerCheckout(true)} className="relative p-2 text-gray-300 bg-white/5 rounded-full">
+                <ShoppingCart size={18} />
+                {customerCart.length > 0 && <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-black rounded-full h-5 w-5 flex items-center justify-center">{customerCart.length}</span>}
+              </button>
+            </div>
           </div>
         </nav>
 
@@ -498,7 +513,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* ENQUIRY FORM */}
+              {/* ENQUIRY FORM AT BOTTOM OF HOME PAGE */}
               <div className="max-w-3xl mx-auto bg-black/60 backdrop-blur-xl p-8 md:p-12 rounded-[40px] border border-white/10 shadow-2xl mt-20 animate-in fade-in duration-700">
                 <h3 className="text-3xl font-black mb-6 flex items-center gap-3"><Send className="text-orange-500" /> General Enquiry</h3>
                 <p className="text-gray-400 mb-8 font-medium">Have questions about corporate events, large reservations, or custom menus? Drop us a message and our team will get back to you shortly.</p>
@@ -517,7 +532,7 @@ export default function App() {
             </>
           )}
 
-          {/* CUSTOMER DASHBOARD */}
+          {/* CUSTOMER PROFILE DASHBOARD */}
           {currentView === 'customerDashboard' && currentUser && (
             <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-10">
               <div className="bg-black/60 backdrop-blur-xl rounded-[40px] p-10 border border-white/10 shadow-2xl mb-8">
@@ -610,7 +625,7 @@ export default function App() {
             </div>
           )}
 
-          {/* BOOKING (UPDATED WITH CUSTOMER INFO FIELDS & ADMIN STORAGE) */}
+          {/* BOOKING */}
           {currentView === 'book' && (
             <div className="max-w-5xl mx-auto bg-black/60 p-6 md:p-10 rounded-3xl md:rounded-[40px] border border-white/10 backdrop-blur-xl animate-in slide-in-from-bottom-10 flex flex-col lg:flex-row gap-8">
               <div className="flex-1 space-y-6">
@@ -728,7 +743,7 @@ export default function App() {
                   </div>
                 )}
 
-                {/* NEW TAB: RESERVATIONS TRACKING */}
+                {/* RESERVATIONS TRACKING */}
                 {adminTab === 'reservations' && (
                   <div className="flex-1 overflow-hidden flex flex-col">
                     <h3 className="text-2xl md:text-3xl font-black mb-6 flex items-center gap-3"><Calendar className="text-orange-500" /> Table Reservations</h3>
@@ -772,7 +787,7 @@ export default function App() {
                         ))}
                       </div>
 
-                      {/* 2. Item Grid Column (NEW PERFECT LEFT-ALIGNED BOX STRUCTURE) */}
+                      {/* 2. Item Grid Column */}
                       <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3 overflow-y-auto pr-2 custom-scrollbar min-h-[300px] lg:min-h-0 content-start">
                         {filteredCustomerMenu.map(item => (
                           <div key={item.id} onClick={() => addToCart(item, 1, 'pos')} className="bg-white/5 hover:bg-white/10 rounded-2xl p-2 border border-white/20 cursor-pointer hover:border-orange-500 transition-all flex flex-col text-left shadow-lg group relative overflow-hidden h-[210px]">
@@ -806,6 +821,7 @@ export default function App() {
                           <span className="bg-orange-600 text-xs px-2 py-1 rounded-md">{posCart.length} Items</span>
                         </h3>
 
+                        {/* Dynamic Cart Section */}
                         <div className="flex-1 overflow-y-auto space-y-3 mb-4 border-b border-white/10 pb-4 custom-scrollbar min-h-[150px]">
                           {posCart.length === 0 ? <p className="text-gray-500 text-center text-sm mt-10">Cart is empty. Tap items to add.</p> :
                             posCart.map((item, idx) => (
@@ -824,6 +840,7 @@ export default function App() {
                           }
                         </div>
 
+                        {/* Customer Info Form */}
                         <div className="space-y-2 mb-4">
                           <input type="text" placeholder="* Customer Name" value={posCustomerInfo.name} onChange={e => setPosCustomerInfo({ ...posCustomerInfo, name: e.target.value })} className="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-white outline-none focus:border-orange-500 text-xs" />
                           <div className="flex gap-2">
@@ -832,8 +849,10 @@ export default function App() {
                           </div>
                         </div>
 
+                        {/* Discounts and Totals */}
                         <div className="space-y-2 mb-4 text-xs font-medium">
                           <div className="flex justify-between text-gray-400"><span>Subtotal</span> <span>${posSubtotal.toFixed(2)}</span></div>
+
                           <div className="flex justify-between items-center py-1">
                             <label className="flex items-center gap-2 cursor-pointer hover:text-white transition text-gray-400" onClick={(e) => { e.preventDefault(); setVipMembership(!vipMembership); }}>
                               <div className={`w-4 h-4 rounded flex items-center justify-center border transition ${vipMembership ? 'bg-orange-600 border-orange-600' : 'border-gray-500'}`}>
@@ -843,30 +862,32 @@ export default function App() {
                             </label>
                             {vipMembership && <span className="text-green-400">-${memberDiscountAmount.toFixed(2)}</span>}
                           </div>
+
                           <div className="flex justify-between items-center py-1 border-b border-white/10 pb-3">
                             <span className="text-gray-400 flex items-center gap-2">Manual Dis. <input type="number" min="0" max="100" value={discountPercent} onChange={e => setDiscountPercent(e.target.value)} className="w-12 bg-white/10 border border-white/20 rounded p-1 text-center text-white outline-none" />%</span>
                             {discountPercent > 0 && <span className="text-orange-400">-${manualDiscountAmount.toFixed(2)}</span>}
                           </div>
                         </div>
 
+                        {/* Total and Charge Button */}
                         <div className="flex justify-between items-end mb-4 pt-1 gap-2">
-                          <span className="text-gray-400 font-bold text-sm">Total</span>
-                          <span className="text-3xl font-black text-orange-400">${posFinalTotal.toFixed(2)}</span>
+                          <span className="text-gray-400 font-bold text-sm">Amount Due</span>
+                          <span className="text-4xl font-black text-orange-400">${posFinalTotal.toFixed(2)}</span>
                         </div>
 
                         <div className="grid grid-cols-2 gap-2 mb-2">
                           <button onClick={() => { setPosCart([]); setPosCustomerInfo({ name: '', phone: '', email: '' }); showNotification("Cart Cleared"); }} className="py-2.5 bg-white/5 border border-white/10 text-white rounded-xl font-bold text-xs hover:bg-white/10 transition flex items-center justify-center gap-2"><Trash2 size={14} /> Clear</button>
                           <button onClick={() => showNotification("Order Saved to Drafts!")} className="py-2.5 bg-white/5 border border-white/10 text-white rounded-xl font-bold text-xs hover:bg-white/10 transition flex items-center justify-center gap-2"><Save size={14} /> Save Order</button>
                         </div>
-                        <button onClick={processPOSOrderPayment} className="w-full py-3.5 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl font-black text-sm hover:shadow-lg transition flex justify-center items-center gap-2 shadow-orange-600/20">
-                          <Printer size={16} /> CHARGE ${(posFinalTotal).toFixed(2)}
+                        <button onClick={processPOSOrderPayment} className="w-full py-3.5 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-xl font-black text-sm md:text-base hover:shadow-lg transition">
+                          <Calculator className="inline mr-2" size={18} /> CHARGE & PRINT
                         </button>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* APP SETTINGS TAB */}
+                {/* APP SETTINGS TAB (Logo, Titles, Video) */}
                 {adminTab === 'settings' && (
                   <div className="flex-1 overflow-y-auto space-y-6 pr-2 animate-in fade-in custom-scrollbar">
                     <h3 className="text-2xl font-black flex items-center gap-3 mb-6"><Settings2 className="text-orange-500" /> App Settings</h3>
@@ -1115,7 +1136,7 @@ export default function App() {
           <div className="bg-white text-black w-full max-w-sm rounded-3xl p-8 flex flex-col shadow-2xl print:shadow-none print:w-full print:rounded-none">
             <div className="text-center mb-6 border-b border-dashed border-gray-300 pb-4">
               <h2 className="text-2xl font-black uppercase mb-1 flex items-center justify-center gap-2">
-                {appSettings.logoImage && <img src={appSettings.logoImage} className="h-6 w-auto rounded-full" alt="Logo" />}
+                {appSettings.logoImage && <img src={appSettings.logoImage} className="h-8 w-8 rounded-full object-cover border border-black" alt="Logo" />}
                 {appSettings.logoText}<span className="font-light">{appSettings.logoSubText}</span>
               </h2>
               <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Official Receipt</p>
